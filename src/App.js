@@ -4,7 +4,7 @@ import { generateClient } from 'aws-amplify/api';
 import {listNotes} from './graphql/queries';
 import { v4 as uuid } from 'uuid';
 import { List, Input, Button } from 'antd';
-import { createNote as CreateNote, deleteNote as DeleteNote } from './graphql/mutations';
+import { createNote as CreateNote, deleteNote as DeleteNote, updateNote as UpdateNote } from './graphql/mutations';
 
 const CLIENT_ID = uuid();
 
@@ -70,7 +70,10 @@ function App() {
   const renderItem = (item) => {
     return (
       <List.Item style={styles.item} actions={[
+        <>
         <p style={styles.p} onClick={()=>deleteNote(item)}>Delete</p>
+        <p style={styles.p} onClick={()=>updateNote(item)}>{item.completed ? 'completed' : 'mark completed'}</p>
+        </>
       ]}>
         <List.Item.Meta
           title={item.name}
@@ -125,6 +128,25 @@ function App() {
         variables: { input: { id } }
       })
       console.log('successfully deleted note!');
+    } catch (err) {
+      console.error("error: ", err);
+    }
+  };
+
+  const updateNote = async(note) => {
+  const index = state.notes.findIndex(n => n.id === note.id);
+    const notes = [
+      ...state.notes
+    ];
+    notes[index].completed = !note.completed;
+    dispatch({ type: 'SET_NOTES', notes })
+    try {
+      const client = generateClient();
+      client.graphql({
+        query: UpdateNote,
+        variables: { input: { id: note.id, completed: notes[index].completed } }
+      })
+      console.log('successfully updated note!');
     } catch (err) {
       console.error("error: ", err);
     }
