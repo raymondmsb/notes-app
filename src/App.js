@@ -6,6 +6,7 @@ import { v4 as uuid } from 'uuid';
 import { List, Input, Button } from 'antd';
 import { createNote as CreateNote, deleteNote as DeleteNote, updateNote as UpdateNote } from './graphql/mutations';
 import { onCreateNote } from './graphql/subscriptions';
+import { useState } from "react";
 
 const CLIENT_ID = uuid();
 
@@ -68,12 +69,16 @@ function App() {
     }
   }
 
+  const [edit, setEdit] = useState(false);
+  const [editedItem, setEditedItem] = useState('');
+
   const renderItem = (item) => {
     return (
       <List.Item style={styles.item} actions={[
         <>
         <p style={styles.p} onClick={()=>deleteNote(item)}>Delete</p>
-        <p style={styles.p} onClick={()=>updateNote(item)}>{item.completed ? 'completed' : 'mark completed'}</p>
+        <p style={styles.p} onClick={()=>updateNoteComplete(item)}>{item.completed ? 'completed' : 'mark completed'}</p>
+        <p style={styles.p} onClick={()=>{setEdit(true); setEditedItem(item);}}>Edit</p>
         </>
       ]}>
         <List.Item.Meta
@@ -146,7 +151,7 @@ function App() {
     }
   };
 
-  const updateNote = async(note) => {
+  const updateNoteComplete = async(note) => {
   const index = state.notes.findIndex(n => n.id === note.id);
     const notes = [
       ...state.notes
@@ -164,6 +169,26 @@ function App() {
       console.error("error: ", err);
     }
   };
+
+  const updateNoteContent = (description, note) => {
+    const index = state.notes.findIndex(n => n.id === note.id);
+    const notes = [
+      ...state.notes
+    ];
+    notes[index].description = description;
+    dispatch({ type: 'SET_NOTES', notes })
+    try {
+      const client = generateClient();
+      client.graphql({
+        query: UpdateNote,
+        variables: { input: { id: note.id, description: notes[index].description } }
+      })
+      console.log('successfully updated note description!');
+    } catch (err) {
+      console.error("error: ", err);
+    }
+  };
+
 
   const onChange = (e) => {
     dispatch({ type: 'SET_INPUT', name: e.target.name, value: e.target.value })
@@ -196,6 +221,28 @@ function App() {
         dataSource={state.notes}
         renderItem={renderItem}
       />
+      {edit ? <div>
+      <Input 
+        onChange={onChange}
+        value={state.form.description}
+        placeholder='New Description'
+        name='description'
+        style={styles.input}
+      />
+      <Button
+        onClick={() => updateNoteContent(state.form.description, editedItem)}
+        type="secondary"
+      >
+        Save
+      </Button>
+      <Button
+        onClick={() => setEdit(false)}
+        type="secondary"
+      >
+        Close X
+      </Button>
+      </div>
+      : null}
     </div>
   );
 }
